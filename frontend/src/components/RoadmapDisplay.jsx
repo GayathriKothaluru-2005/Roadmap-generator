@@ -1,0 +1,171 @@
+// ================================================================
+// components/RoadmapDisplay.jsx
+// Updated to match new downloadRoadmapAsPdf(topic, roadmap) signature
+// ================================================================
+
+import React, { useState } from "react";
+import RoadmapSection           from "./RoadmapSection";
+import NodeModal                from "./NodeModal";
+import Toast                    from "./Toast";
+import { downloadRoadmapAsPdf } from "../utils/downloadPdf";
+import { shareRoadmap }         from "../utils/shareRoadmap";
+
+export default function RoadmapDisplay({ data, onReset }) {
+  const [activeTopic, setActiveTopic] = useState(null);
+  const [downloading, setDownloading] = useState(false);
+  const [sharing,     setSharing]     = useState(false);
+  const [toast,       setToast]       = useState(null);
+
+  const { topic, roadmap } = data;
+
+  const totalTopics =
+    (roadmap.beginner?.length     || 0) +
+    (roadmap.intermediate?.length || 0) +
+    (roadmap.advanced?.length     || 0);
+
+  // ── PDF download ──────────────────────────────────────────
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      // Pass topic string + roadmap object directly.
+      // The PDF engine builds everything from data — no DOM capture.
+      await downloadRoadmapAsPdf(topic, roadmap);
+    } catch (err) {
+      console.error("[PDF] Failed:", err);
+      alert("PDF generation failed. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  // ── Share ─────────────────────────────────────────────────
+  const handleShare = async () => {
+    setSharing(true);
+    await shareRoadmap(topic, roadmap, (msg) => setToast(msg));
+    setSharing(false);
+  };
+
+  return (
+    <div className="w-full max-w-4xl mx-auto animate-fade-in">
+
+      {/* ── Action bar ─────────────────────────────────────── */}
+      <div style={{
+        display: "flex", flexWrap: "wrap",
+        alignItems: "center", justifyContent: "space-between",
+        gap: "16px", marginBottom: "32px",
+      }}>
+        <div>
+          <p style={{ fontSize: "0.62rem", color: "var(--text-muted)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "5px" }}>
+            Learning Roadmap
+          </p>
+          <h2 style={{
+            fontSize: "clamp(1.4rem, 3vw, 1.95rem)",
+            fontWeight: 800,
+            letterSpacing: "-0.02em",
+            background: "linear-gradient(135deg, #eef2ff, rgba(0,245,255,0.88))",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          }}>
+            {topic}
+          </h2>
+          <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "4px" }}>
+            {totalTopics} topics
+            {" · "}
+            <span style={{ color: "rgba(0,245,255,0.6)" }}>click any card to ask AI 🤖</span>
+          </p>
+        </div>
+
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <button className="neon-btn" onClick={onReset}
+            style={{ borderColor: "rgba(255,255,255,0.1)", color: "var(--text-muted)", padding: "9px 16px", fontSize: "0.83rem" }}>
+            ← New Topic
+          </button>
+
+          <button className="neon-btn share-btn" onClick={handleShare} disabled={sharing}
+            style={{ padding: "9px 16px", fontSize: "0.83rem" }}>
+            {sharing
+              ? <BtnSpinner color="var(--neon-purple)" label="Sharing…" />
+              : <><ShareIcon /> Share</>}
+          </button>
+
+          <button className="neon-btn" onClick={handleDownload} disabled={downloading}
+            style={{ padding: "9px 16px", fontSize: "0.83rem" }}>
+            {downloading
+              ? <BtnSpinner color="var(--neon-cyan)" label="Generating…" />
+              : <><DownloadIcon /> Download PDF</>}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Roadmap sections (dark UI, screen display only) ── */}
+      {/*
+        NOTE: id="roadmap-export" is kept for reference but the PDF
+        engine no longer screenshotting this element.
+        PDF is built purely from the roadmap JSON data passed above.
+      */}
+      <div
+        id="roadmap-export"
+        style={{
+          background:   "#04060f",
+          padding:      "28px 28px 40px",
+          borderRadius: "20px",
+          border:       "1px solid rgba(255,255,255,0.05)",
+          position:     "relative",
+          overflow:     "visible",
+        }}
+      >
+        <RoadmapSection stage="beginner"     items={roadmap.beginner}     onExplain={setActiveTopic} />
+        <RoadmapSection stage="intermediate" items={roadmap.intermediate} onExplain={setActiveTopic} />
+        <RoadmapSection stage="advanced"     items={roadmap.advanced}     onExplain={setActiveTopic} />
+      </div>
+
+      <p style={{ textAlign: "center", fontSize: "0.7rem", color: "var(--text-muted)", opacity: 0.4, marginTop: "18px" }}>
+        Generated by RoadmapAI · Powered by Groq
+      </p>
+
+      <NodeModal topic={activeTopic} onClose={() => setActiveTopic(null)} />
+      <Toast message={toast} onHide={() => setToast(null)} />
+    </div>
+  );
+}
+
+function BtnSpinner({ color, label }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+      <span style={{
+        width: 11, height: 11,
+        border: `2px solid ${color}30`,
+        borderTopColor: color,
+        borderRadius: "50%",
+        animation: "spin 0.75s linear infinite",
+        display: "inline-block",
+      }} />
+      {label}
+    </span>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+      style={{ display: "inline-block", marginRight: 5, verticalAlign: "middle" }}>
+      <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+    </svg>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+      style={{ display: "inline-block", marginRight: 5, verticalAlign: "middle" }}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+  );
+}
