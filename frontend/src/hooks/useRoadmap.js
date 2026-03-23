@@ -37,7 +37,9 @@ export function useRoadmap() {
     setRoadmap(null);
 
     try {
-      const response = await fetch("/generate-roadmap", {
+      const API_BASE = "https://roadmap-backend-3yqm.onrender.com";
+      const response = await fetch(`${API_BASE}/generate-roadmap`, {
+ 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic: topic.trim() }),
