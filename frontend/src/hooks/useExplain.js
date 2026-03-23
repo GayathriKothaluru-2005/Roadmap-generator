@@ -17,7 +17,8 @@ export function useExplain() {
     setMessages([{ role: "user", text: `Explain: ${topic}` }]);
 
     try {
-      const res  = await fetch("/api/explain", {
+      const API_BASE = "https://roadmap-backend-3yqm.onrender.com";
+      const res = await fetch(`${API_BASE}/api/explain`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ topic }),
